@@ -72,7 +72,7 @@ for index in range(len(smallestFileIndex)):
         fileNameToMatch = os.listdir(dst)[0]
         #fileNameToMatch = fileNameToMatch + ".mkv"
         mkvToMove = join(dst, fileNameToMatch)
-        if fileNameToMatch[-5] is not ')': # Determine if TV or Movie (')' meaning it's a film) 
+        if '[' and ']' in fileNameToMatch: # Determine if TV or Movie (')' meaning it's a film) 
                 mkvSeriesName = fileNameToMatch.split("-", 1) [0]
                 mkvSeriesName = mkvSeriesName[:-1] # remove space
                 mkvDestination = join(TVFolder, mkvSeriesName)
