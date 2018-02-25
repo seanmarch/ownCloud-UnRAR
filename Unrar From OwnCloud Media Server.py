@@ -46,7 +46,7 @@ for index in range(len(smallestFileIndex)):
                 if fileNameToMatch in fileName[index]:
                         counter = counter + 1
 
-        #       7       Compare number of matches to Part Number. If the same move all these files to Temporary folder
+        #       7       Compare number of matches to Part Number. If the same move all these files to Temporary folder. If not, then skip rest of this iteration and move onto next file.
         if counter == int(partNumberToMatch):
                 if not os.path.isdir(dst):
                         os.mkdir(dst)
@@ -55,6 +55,8 @@ for index in range(len(smallestFileIndex)):
                                 fileToMove = join(path, fileName[index])
                                 shutil.move(fileToMove, dst)
                                 fileToUnRAR = join(dst, fileName[index + 1 - counter])
+	else:
+		continue
 
         #       8       Unrar files and reset counter
 	print ("Processing: " + fileNameToMatch)
