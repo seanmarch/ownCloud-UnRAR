@@ -1,90 +1,149 @@
-import os, sys, shutil, subprocess
+import os
+import sys
+import shutil
+import subprocess
+import PySimpleGUI as sg
 from os.path import join,getsize
 from pyunpack import Archive
 
-#       1 Declare OwnCloud Directory Source, Temporary Processing Folder and Destination
-path = r'/store/ownCloud/SMTV'
-dst = r'/store/OwnCloud Temp'
-TVFolder = r'/store/media/TV Shows'
-MoviesFolder = r'/store/media/Movies'
+pathOfRARFiles = os.path.expanduser('~\ownCloud\SMTV')
+unRARTempFolder = os.path.expanduser('~\Videos\ownCloud Temp')
+tvFolder = os.path.expanduser('~\Videos\TV Shows')
+moviesFolder = os.path.expanduser('~\Videos\Movies')
+#TVFolder = r'H:\to go on server\TV Shows'
+#MoviesFolder = r'H:\to go on server\Movies'
+
+def setFolders(folderPaths):
+    global pathOfRARFiles
+    global tvFolder
+    global moviesFolder
+    #global TVFolder
+    #global MoviesFolder
+
+    pathOfRARFiles = folderPaths[0]
+    tvFolder = folderPaths[1]
+    moviesFolder = folderPaths[2]
+
+    startUnRAR()
 
 
-#       1.1     Create lists and variables
-dirs = os.listdir(path)
-dirs.sort()
-TVfolders = os.listdir(TVFolder)
-fileName = []
-fileSize = []
-smallestFileIndex = []
-counter = 0
+def startUnRAR():
+    createFileNameAndSizeList(pathOfRARFiles)
+
+def createFileNameAndSizeList(pathOfRARFiles):
+    fileNameList = []
+    fileSizeList = []
+
+    rarFilesList = os.listdir(pathOfRARFiles)
+    rarFilesList.sort()
+    
+    for rarFile in rarFilesList:
+        if rarFile.endswith(".rar") and ".part" in rarFile:
+            fileNameList.append(rarFile)
+            fileSizeList.append(getsize(join(pathOfRARFiles, rarFile)))
+
+    createSmallestRARFileIndexList(fileNameList, fileSizeList)
 
 
-#       2       Add owncloud files to the lists
-for file in dirs:
-	if file.endswith(".rar") and ".part" in file:
-        	fileName.append(file)
-        	fileSize.append(getsize(join(path,file)))
+def createSmallestRARFileIndexList(fileNameList, fileSizeList):
+    smallestRARFileIndexList = []
 
-#       3       Iterate through list and find files < 50 MB and is a rar file. Add their index to list
-for index in range(len(fileName)):
+    for index in range(len(fileNameList)):
+        if fileNameList[index].endswith('.rar') and fileSizeList[index] < 50000000:
+            smallestRARFileIndexList.append(index)
 
-        if fileName[index].endswith('.rar') and fileSize[index] < 50000000:
-                smallestFileIndex.append(index)
-
-#       4       Get File Title of this file
-for index in range(len(smallestFileIndex)):
-        fileNameToMatch = fileName[smallestFileIndex[index]].split('.', 1) [0]
-
-        #       5       Get Part Number of this file
-        partNumberToMatch = fileName[smallestFileIndex[index]].split('.part', 1) [1]
-        partNumberToMatch = partNumberToMatch[:-4]
+    getIndexOfAllFilesToUnRAR(smallestRARFileIndexList, fileNameList)
 
 
-        #       6       Count how many titles in OwnCloud directory match this title
-        for index in range(len(fileName)):
-                if fileNameToMatch in fileName[index]:
-                        counter = counter + 1
+def getIndexOfAllFilesToUnRAR(smallestRARFileIndexList, fileNameList):
+    indexOfFilesToUnRAR =[]
+    for smallestRARFileIndex in smallestRARFileIndexList:
+        fileTitleOfSmallestRARFile = getFileTitleOfSmallestRARFile(smallestRARFileIndex, fileNameList)
+        partNumberOfSmallestRARFile = getPartNumberOfSmallestRARFile(smallestRARFileIndex, fileNameList)
+        numberOfMatchingFileTitles = countNumberOfMatchingFileTitles(fileTitleOfSmallestRARFile, fileNameList)
+        if partNumberOfSmallestRARFile == numberOfMatchingFileTitles:
+            indexOfFilesToUnRAR.append(smallestRARFileIndex)
+    unRARAllReadyRARs(indexOfFilesToUnRAR, smallestRARFileIndex, fileNameList)           
+            
 
-        #       7       Compare number of matches to Part Number. If the same move all these files to Temporary folder. If not, then skip rest of this iteration and move onto next file.
-        if counter == int(partNumberToMatch):
-                if not os.path.isdir(dst):
-                        os.mkdir(dst)
-                for index in range(len(fileName)):
-                        if fileNameToMatch in fileName[index]:
-                                fileToMove = join(path, fileName[index])
-                                shutil.move(fileToMove, dst)
-                                fileToUnRAR = join(dst, fileName[index + 1 - counter])
-	else:
-		counter = 0
-		continue
+def unRARAllReadyRARs(indexOfFilesToUnRAR ,smallestRARFileIndexList, fileNameList):
+    createUnRARTempFolderIfDoesntExist(unRARTempFolder)
+    for fileToUnRAR in range(len(indexOfFilesToUnRAR)):
+        sg.Print ("Processing " + str(fileToUnRAR + 1) + " of " + str(len(indexOfFilesToUnRAR)) + ": " + str(fileNameList[indexOfFilesToUnRAR[fileToUnRAR]].rsplit('.', 3) [0]))
+        moveAllMatchingFilesToTempFolder(fileNameList[indexOfFilesToUnRAR[fileToUnRAR]].rsplit('.', 3) [0], fileNameList, pathOfRARFiles,unRARTempFolder)
+        unRARFiles(unRARTempFolder, fileNameList, indexOfFilesToUnRAR[fileToUnRAR], smallestRARFileIndexList, fileNameList[indexOfFilesToUnRAR[fileToUnRAR]])
+        fileTitleOfSmallestRARFile = fileNameList[indexOfFilesToUnRAR[fileToUnRAR]].rsplit('.', 3) [0]
+        deleteRARFilesWhenUnRARComplete(fileTitleOfSmallestRARFile, fileNameList, unRARTempFolder)
+        checkIfVideoIsFilmOrTV(tvFolder, moviesFolder, unRARTempFolder)
+    deleteOwncloudTempFolder()
 
-        #       8       Unrar files and reset counter
-	print ("Processing: " + fileNameToMatch)
-        Archive(fileToUnRAR).extractall(dst)
-        counter = 0
+def getFileTitleOfSmallestRARFile(smallestRARFileIndexList, fileNameList):
+    fileTitleOfSmallestRARFile = fileNameList[smallestRARFileIndexList].rsplit('.', 3) [0]
+    return fileTitleOfSmallestRARFile
 
-        #       9       Delete RAR files in Temp Folder
-        for index in range(len(fileName)):
-                if fileNameToMatch in fileName[index]:
-                        if fileName[index].endswith('.rar'):
-                                fileToRemove = join(dst, fileName[index])
-                                os.remove(fileToRemove)
 
-        #       10      Move .mkv file to respective videos folder. If folder doesn't exist, create it.
-        fileNameToMatch = os.listdir(dst)[0]
-        #fileNameToMatch = fileNameToMatch + ".mkv"
-        mkvToMove = join(dst, fileNameToMatch)
-        if '[' and ']' in fileNameToMatch: # Determine if TV or Movie (')' meaning it's a film) 
-                mkvSeriesName = fileNameToMatch.split("-", 1) [0]
-                mkvSeriesName = mkvSeriesName[:-1] # remove space
-                mkvDestination = join(TVFolder, mkvSeriesName)
-                if mkvSeriesName not in TVfolders:
-                        os.mkdir(mkvDestination)
-                        TVfolders.append(mkvSeriesName)
-        else:
-                mkvDestination = MoviesFolder
+def getPartNumberOfSmallestRARFile(smallestRARFileIndex, fileNameList):
+    partNumberOfSmallestRARFile = fileNameList[smallestRARFileIndex].split('.part', 1) [1]
+    partNumberOfSmallestRARFile = partNumberOfSmallestRARFile[:-4]
+    return int(partNumberOfSmallestRARFile)
 
-        shutil.move(mkvToMove, mkvDestination)
 
-#os.rmdir(dst)
-print('Complete')
+def countNumberOfMatchingFileTitles(fileTitleOfSmallestRARFile, fileNameList):
+    numberOfMatchingFileTitle = 0
+    for index in range(len(fileNameList)):
+        if fileTitleOfSmallestRARFile in fileNameList[index]:
+            numberOfMatchingFileTitle = numberOfMatchingFileTitle + 1
+    return numberOfMatchingFileTitle
+
+
+def createUnRARTempFolderIfDoesntExist(unRARTempFolder):
+    if not os.path.isdir(unRARTempFolder):
+        os.mkdir(unRARTempFolder)
+
+
+def moveAllMatchingFilesToTempFolder(fileTitleOfSmallestRARFile, fileNameList, pathOfRARFiles,unRARTempFolder):
+    for index in range(len(fileNameList)):
+        if fileTitleOfSmallestRARFile in fileNameList[index]:
+            fileToMove = join(pathOfRARFiles, fileNameList[index])
+            shutil.move(fileToMove, unRARTempFolder)
+
+
+def unRARFiles(unRARTempFolder, fileNameList, smallestRARFileIndex, smallestRARFileIndexList, fileTitleOfSmallestRARFile):
+    fileToUnRAR = join(unRARTempFolder, fileNameList[smallestRARFileIndex])
+    Archive(fileToUnRAR).extractall(unRARTempFolder)
+
+
+def deleteRARFilesWhenUnRARComplete(fileTitleOfSmallestRARFile, fileNameList, unRARTempFolder):
+    for index in range(len(fileNameList)):
+        if fileTitleOfSmallestRARFile in fileNameList[index]:
+            if fileNameList[index].endswith('.rar'):
+                fileToRemove = join(unRARTempFolder, fileNameList[index])
+                os.remove(fileToRemove)
+
+
+def checkIfVideoIsFilmOrTV(tvFolder, moviesFolder, unRARTempFolder):
+    TVfolders = os.listdir(tvFolder)
+    fileNameToMatch = os.listdir(unRARTempFolder)[0]
+    mkvToMove = join(unRARTempFolder, fileNameToMatch)
+    if '[' and ']' in fileNameToMatch: # Determine if TV or Movie ('[' and ']' meaning it's TV)
+        mkvSeriesName = fileNameToMatch.split("-", 1) [0].strip()
+        mkvDestination = join(tvFolder, mkvSeriesName)
+        if mkvSeriesName not in TVfolders:
+            os.mkdir(mkvDestination)
+            TVfolders.append(mkvSeriesName)
+    else:
+        mkvDestination = moviesFolder
+    moveVideoToTVOrFilmFolder(mkvToMove, mkvDestination)
+
+
+def moveVideoToTVOrFilmFolder(mkvToMove, mkvDestination):
+    shutil.move(mkvToMove, mkvDestination)
+    
+
+def deleteOwncloudTempFolder():
+    os.rmdir(unRARTempFolder)
+    print('Complete')
+
+
+if __name__ == "__main__":
+    startUnRAR()
