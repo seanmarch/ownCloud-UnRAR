@@ -1,5 +1,5 @@
 import PySimpleGUI as sg 
-import ownCloudUnRARRefactored
+import ownCloudUnRAR
 import os
 import shelve
 
@@ -12,7 +12,8 @@ def startBuildGUI():
 def loadPastPathDirectories():
    folderPathsHistoryFile = shelve.open('folderPathsHistoryFile')
 
-   if not folderPathsHistoryFile['ownCloudDir'] and not folderPathsHistoryFile['tvFolder'] and not folderPathsHistoryFile['filmFolder']:
+   if 'ownCloudDir' not in folderPathsHistoryFile and 'tvFolder' not in folderPathsHistoryFile and 'filmFolder' not in folderPathsHistoryFile:
+   #folderPathsHistoryFile['ownCloudDir'] and not folderPathsHistoryFile['tvFolder'] and not folderPathsHistoryFile['filmFolder']:
       ownCloudDir = 'Enter your ownCloud Directory here'
       tvFolder = 'Enter your TV Folder Directory here'
       filmFolder = 'Enter your Film Folder here'
@@ -35,8 +36,6 @@ def buildGUI(ownCloudDir, tvFolder, filmFolder):
      
    event, folderPaths = window.Layout(layout).Read()
 
-   savePathsDirectories(folderPaths)
-
    return event, folderPaths
 
 
@@ -46,8 +45,6 @@ def savePathsDirectories(folderPaths):
    folderPathsHistoryFile['tvFolder'] = folderPaths[1]
    folderPathsHistoryFile['filmFolder'] = folderPaths[2]
    folderPathsHistoryFile.close()
-
-   return
 
 if __name__ == "__main__":
     startBuildGUI() 

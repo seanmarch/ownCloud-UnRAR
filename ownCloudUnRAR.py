@@ -68,6 +68,7 @@ def getIndexOfAllFilesToUnRAR(smallestRARFileIndexList, fileNameList):
 
 def unRARAllReadyRARs(indexOfFilesToUnRAR ,smallestRARFileIndexList, fileNameList):
     createUnRARTempFolderIfDoesntExist(unRARTempFolder)
+    sg.Print('Wait ...')
     for fileToUnRAR in range(len(indexOfFilesToUnRAR)):
         sg.Print ("Processing " + str(fileToUnRAR + 1) + " of " + str(len(indexOfFilesToUnRAR)) + ": " + str(fileNameList[indexOfFilesToUnRAR[fileToUnRAR]].rsplit('.', 3) [0]))
         moveAllMatchingFilesToTempFolder(fileNameList[indexOfFilesToUnRAR[fileToUnRAR]].rsplit('.', 3) [0], fileNameList, pathOfRARFiles,unRARTempFolder)

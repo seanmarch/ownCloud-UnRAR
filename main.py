@@ -1,10 +1,11 @@
 import GUI
-import ownCloudUnRARRefactored
+import ownCloudUnRAR
 
 if __name__ == "__main__":
     while True:
         event, folderPaths = GUI.startBuildGUI()
-        if event == 'Close':
+        if event == 'Close' or event is None:
             break
         elif event == 'UnRAR':
-            ownCloudUnRARRefactored.setFolders(folderPaths)
+            ownCloudUnRAR.setFolders(folderPaths)
+            GUI.savePathsDirectories(folderPaths)
